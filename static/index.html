@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f3ed">
+  <title>Urbanization Mapping Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Urbanization Mapping Tool home">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span>Urbanization <span class="brand-light">Mapping Tool</span></span>
+    </a>
+    <div class="topbar-right">
+      <span class="dataset-chip"><span class="status-dot"></span> GISD30 · 30 m · 2020</span>
+      <button class="icon-button" id="export-geojson" title="Export saved sites as GeoJSON" aria-label="Export saved sites as GeoJSON" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="sidebar" aria-label="Analysis and saved sites">
+      <section class="section study-section">
+        <div class="section-heading">
+          <div><span class="eyebrow">FIELD ANALYSIS</span><h1>Study area</h1></div>
+          <button class="text-button" id="clear-selection" title="Remove selected rectangle" disabled>Clear</button>
+        </div>
+        <div id="analysis-state" class="analysis-state" role="status" aria-live="polite">
+          <span class="state-icon" aria-hidden="true">＋</span>
+          <span>Draw a rectangle on the map to begin.</span>
+        </div>
+        <div class="result" id="result" hidden>
+          <div class="primary-result">
+            <span class="eyebrow">Impervious Surface:</span>
+            <div class="percentage-line"><strong id="result-impervious-percent">—</strong><span>%</span></div>
+            <p class="proxy-percent">Urbanization Proxy: <strong id="result-proxy-percent">—</strong>%</p>
+            <span class="classification" id="result-level"></span>
+          </div>
+          <dl class="metrics">
+            <div><dt>Rectangle area</dt><dd id="result-area">—</dd></div>
+            <div><dt>Impervious surface area</dt><dd id="result-impervious-area">—</dd></div>
+            <div><dt>Center</dt><dd id="result-center">—</dd></div>
+          </dl>
+          <details class="metadata" open>
+            <summary>Reproducibility</summary>
+            <dl>
+              <div><dt>Dataset</dt><dd>GISD30 · <a href="https://doi.org/10.5281/zenodo.5220816" target="_blank" rel="noreferrer">public data</a></dd></div>
+              <div><dt>Resolution / year</dt><dd>30 m · 2020</dd></div>
+              <div><dt>Paper</dt><dd><a href="https://doi.org/10.5194/essd-14-1831-2022" target="_blank" rel="noreferrer">ESSD 14, 1831–1856</a></dd></div>
+              <div><dt>Analyzed</dt><dd id="meta-date">—</dd></div>
+              <div><dt>Method</dt><dd id="meta-method">—</dd></div>
+            </dl>
+          </details>
+          <div class="save-row">
+            <input id="site-name" type="text" maxlength="80" placeholder="Name this site" aria-label="Site name">
+            <button class="save-button" id="save-site" disabled>Save site</button>
+          </div>
+        </div>
+        <div class="thresholds">
+          <details>
+            <summary>Classification thresholds</summary>
+            <p>Research-defined boundaries (%); not universal standards.</p>
+            <div class="threshold-grid">
+              <label>Natural ≤ <input type="number" min="1" max="99" step="1" value="20" data-threshold="0"></label>
+              <label>Low urban ≤ <input type="number" min="1" max="99" step="1" value="40" data-threshold="1"></label>
+              <label>Semi-urban ≤ <input type="number" min="1" max="99" step="1" value="60" data-threshold="2"></label>
+              <label>Urban ≤ <input type="number" min="1" max="99" step="1" value="80" data-threshold="3"></label>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="section sites-section">
+        <div class="section-heading sites-heading">
+          <div><span class="eyebrow">COLLECTION</span><h2>Saved sites <span id="site-count">0</span></h2></div>
+          <button class="icon-button export-csv" id="export-csv" title="Export saved sites as CSV" aria-label="Export saved sites as CSV" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3M8 7h8"/></svg>
+          </button>
+        </div>
+        <div class="site-table-wrap">
+          <table>
+            <thead><tr><th>Site</th><th>Area</th><th>Proxy</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+            <tbody id="sites-list"></tbody>
+          </table>
+          <p class="empty-sites" id="empty-sites">Saved analyses will appear here.</p>
+        </div>
+      </section>
+
+      <footer class="sidebar-footer">
+        <span class="api-status" id="api-status"><i></i> Connecting to public data</span>
+        <span>Impervious surface estimates · Thailand &amp; global</span>
+      </footer>
+    </aside>
+
+    <section class="map-shell" aria-label="Study area map">
+      <div class="map-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.2 4.2"/></svg>
+        <input type="search" id="location-search" placeholder="Search for a place" aria-label="Search for a place">
+        <button id="search-button" aria-label="Search map">Search</button>
+        <div class="search-results" id="search-results" hidden></div>
+      </div>
+      <div id="map" role="application" aria-label="Interactive map. Draw a rectangle to analyze impervious surface."></div>
+      <div class="map-footer"><span>Esri street map · Esri imagery</span><span>GISD30 impervious surface · 30 m · 2020</span></div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
