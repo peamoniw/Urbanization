@@ -4,7 +4,6 @@ from functools import lru_cache
 from pathlib import Path
 from urllib.request import urlopen
 
-import libarchive
 import numpy as np
 import rasterio
 from fastapi import FastAPI, HTTPException
@@ -82,6 +81,8 @@ def _archive_region(west_edge):
 
 @lru_cache(maxsize=4)
 def _read_archive_tiles(region, tile_names):
+    import libarchive
+
     archive_folder = f"GISD30_1985-2020_{region}"
     tile_prefix = "GISD30_1985-2020"
     wanted = {
